@@ -39,7 +39,7 @@ jobs:
           REPO="${{ github.repository }}"
           FORMULA="asm56k"
           # Try all bottle JSONs for pkg_version
-          VERSION=$(find bottles/ -name "*.bottle.json" | head -1 | xargs jq -r "try .\"$REPO/$FORMULA\".formula.pkg_version // empty")
+          VERSION=$(find bottles/ -name "*.bottle.json" | head -1 | xargs jq -r "try .version // empty")
           TAG="bottles-${VERSION}-$(date +%Y%m%d-%H%M%S)"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -54,11 +54,11 @@ jobs:
           fi
           # Intel Sequoia bottle sha
           if compgen -G "bottles/bottles-macos-15-intel-x86_64/*.bottle.json" > /dev/null; then
-            INTEL_SEQUOIA_SHA=$(jq -r "try .\"$REPO/$FORMULA\".bottle.tags.sequoia.sha256 // empty" bottles/bottles-macos-15-intel-x86_64/*.bottle.json)
+            INTEL_SEQUOIA_SHA=$(jq -r "try .bottle.tags.sequoia.sha256 // empty" bottles/bottles-macos-15-intel-x86_64/*.bottle.json)
           fi
           # ARM64 Tahoe bottle sha
           if compgen -G "bottles/bottles-macos-26-arm64/*.bottle.json" > /dev/null; then
-            TAHOE_ARM_SHA=$(jq -r "try .\"$REPO/$FORMULA\".bottle.tags.arm64_tahoe.sha256 // empty" bottles/bottles-macos-26-arm64/*.bottle.json)
+            TAHOE_ARM_SHA=$(jq -r "try .bottle.tags.arm64_tahoe.sha256 // empty" bottles/bottles-macos-26-arm64/*.bottle.json)
           fi
 
           echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
