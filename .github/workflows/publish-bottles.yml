@@ -33,37 +33,23 @@ jobs:
       - name: List downloaded bottle files (debug)
         run: find bottles/
 
-      - name: Generate release tag and extract bottle info
-        id: release_info
+      - name: Extract version and SHA256 from bottles
         run: |
-          REPO="${{ github.repository }}"
-          FORMULA="asm56k"
-          # Try all bottle JSONs for pkg_version
-          VERSION=$(find bottles/ -name "*.bottle.json" | head -1 | xargs jq -r "try .version // empty")
-          TAG="bottles-${VERSION}-$(date +%Y%m%d-%H%M%S)"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # Build the JSON key from the repository name
+          JSON_KEY="${GITHUB_REPOSITORY/homebrew-/}/asm56k"
 
-          ARM64_SEQUOIA_SHA=""
-          INTEL_SEQUOIA_SHA=""
-          TAHOE_ARM_SHA=""
+          echo "→ Using JSON key: $JSON_KEY"
 
-          # ARM64 Sequoia bottle sha
-          if compgen -G "bottles/bottles-macos-15-arm64/*.bottle.json" > /dev/null; then
-            ARM64_SEQUOIA_SHA=$(jq -r "try .\"$REPO/$FORMULA\".bottle.tags.arm64_sequoia.sha256 // empty" bottles/bottles-macos-15-arm64/*.bottle.json)
-          fi
-          # Intel Sequoia bottle sha
-          if compgen -G "bottles/bottles-macos-15-intel-x86_64/*.bottle.json" > /dev/null; then
-            INTEL_SEQUOIA_SHA=$(jq -r "try .bottle.tags.sequoia.sha256 // empty" bottles/bottles-macos-15-intel-x86_64/*.bottle.json)
-          fi
-          # ARM64 Tahoe bottle sha
-          if compgen -G "bottles/bottles-macos-26-arm64/*.bottle.json" > /dev/null; then
-            TAHOE_ARM_SHA=$(jq -r "try .bottle.tags.arm64_tahoe.sha256 // empty" bottles/bottles-macos-26-arm64/*.bottle.json)
-          fi
+          # Extract version and bottle SHAs
+          VERSION=$(jq -r "try .\"$JSON_KEY\".formula.pkg_version // empty" bottles/bottles-macos-15-arm64/*.bottle.json)
+          ARM64_SEQUOIA_SHA=$(jq -r "try .\"$JSON_KEY\".bottle.tags.arm64_sequoia.sha256 // empty" bottles/bottles-macos-15-arm64/*.bottle.json)
+          INTEL_SEQUOIA_SHA=$(jq -r "try .\"$JSON_KEY\".bottle.tags.sequoia.sha256 // empty" bottles/bottles-macos-15-intel-x86_64/*.bottle.json)
+          TAHOE_ARM_SHA=$(jq -r "try .\"$JSON_KEY\".bottle.tags.arm64_tahoe.sha256 // empty" bottles/bottles-macos-26-arm64/*.bottle.json)
 
-          echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
-          echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
-          echo "tahoe_arm_sha=$TAHOE_ARM_SHA" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION"
+          echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA"
+          echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA"
+          echo "tahoe_arm_sha=$TAHOE_ARM_SHA"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
