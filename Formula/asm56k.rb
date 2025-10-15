@@ -6,10 +6,6 @@ class Asm56k < Formula
   head "https://github.com/kareandersen/asm56k", branch: "main", using: :git
 
   bottle do
-    root_url "https://github.com/kareandersen/homebrew-asm56k/releases/download/..."
-    sha256 cellar: :any_skip_relocation, arm64_sequoia: "..."
-    sha256 cellar: :any_skip_relocation, sequoia:       "..."
-    sha256 cellar: :any_skip_relocation, arm64_tahoe:   "..."
   end
 
   def install

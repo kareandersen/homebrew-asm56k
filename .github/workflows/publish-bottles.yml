@@ -70,12 +70,23 @@ jobs:
       - name: Update formula bottle block
         run: |
           FORMULA_PATH="Formula/asm56k.rb"
-          sed -i \
-            -e 's|root_url "https://github.com/${{ github.repository }}/releases/download/[^"]*"|root_url "https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag }}"|' \
-            -e 's|sha256 cellar: :any_skip_relocation, arm64_sequoia: "[^"]*"|sha256 cellar: :any_skip_relocation, arm64_sequoia: "${{ steps.release_info.outputs.arm64_sequoia_sha }}"|' \
-            -e 's|sha256 cellar: :any_skip_relocation, sequoia:       "[^"]*"|sha256 cellar: :any_skip_relocation, sequoia:       "${{ steps.release_info.outputs.intel_sequoia_sha }}"|' \
-            -e 's|sha256 cellar: :any_skip_relocation, arm64_tahoe: "[^"]*"|sha256 cellar: :any_skip_relocation, arm64_tahoe: "${{ steps.release_info.outputs.tahoe_arm_sha }}"|' \
-            "$FORMULA_PATH"
+          BOTTLE_BLOCK=$(cat <<EOF
+  bottle do
+    root_url "https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag }}"
+    sha256 cellar: :any_skip_relocation, arm64_sequoia: "${{ steps.release_info.outputs.arm64_sequoia_sha }}"
+    sha256 cellar: :any_skip_relocation, sequoia:       "${{ steps.release_info.outputs.intel_sequoia_sha }}"
+    sha256 cellar: :any_skip_relocation, arm64_tahoe:   "${{ steps.release_info.outputs.tahoe_arm_sha }}"
+  end
+EOF
+          )
+
+          # Remove any existing bottle block
+          awk '/^  bottle do/,/^  end$/ {next} {print}' "$FORMULA_PATH" > "${FORMULA_PATH}.tmp"
+          mv "${FORMULA_PATH}.tmp" "$FORMULA_PATH"
+
+          # Insert the new bottle block after the version line
+          awk -v bb="$BOTTLE_BLOCK" '/^  version / {print; print bb; next} {print}' "$FORMULA_PATH" > "${FORMULA_PATH}.tmp"
+          mv "${FORMULA_PATH}.tmp" "$FORMULA_PATH"
 
       - name: Verify formula was updated correctly
         run: |
