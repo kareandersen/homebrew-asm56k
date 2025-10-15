@@ -36,25 +36,20 @@ jobs:
       - name: Extract version and SHA256 from bottles
         id: release_info
         run: |
-          # Build the JSON key from the repository name
           JSON_KEY="${GITHUB_REPOSITORY/homebrew-/}/asm56k"
-
-          echo "→ Using JSON key: $JSON_KEY"
-
-          # Extract version and bottle SHAs
           VERSION=$(jq -r "try .\"$JSON_KEY\".formula.pkg_version // empty" bottles/bottles-macos-15-arm64/*.bottle.json)
           ARM64_SEQUOIA_SHA=$(jq -r "try .\"$JSON_KEY\".bottle.tags.arm64_sequoia.sha256 // empty" bottles/bottles-macos-15-arm64/*.bottle.json)
           INTEL_SEQUOIA_SHA=$(jq -r "try .\"$JSON_KEY\".bottle.tags.sequoia.sha256 // empty" bottles/bottles-macos-15-intel-x86_64/*.bottle.json)
           TAHOE_ARM_SHA=$(jq -r "try .\"$JSON_KEY\".bottle.tags.arm64_tahoe.sha256 // empty" bottles/bottles-macos-26-arm64/*.bottle.json)
-
           TAG="bottles-${VERSION}-$(date +%Y%m%d-%H%M%S)"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION"
-          echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA"
-          echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA"
-          echo "tahoe_arm_sha=$TAHOE_ARM_SHA"
 
-      - name: Create GitHub Release
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
+          echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
+          echo "tahoe_arm_sha=$TAHOE_ARM_SHA" >> "$GITHUB_OUTPUT"
+
+        - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_info.outputs.tag }}
@@ -76,6 +71,12 @@ jobs:
           draft: false
 
       - name: Update formula bottle block
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG: ${{ steps.release_info.outputs.tag }}
+          ARM64_SEQUOIA_SHA: ${{ steps.release_info.outputs.arm64_sequoia_sha }}
+          INTEL_SEQUOIA_SHA: ${{ steps.release_info.outputs.intel_sequoia_sha }}
+          TAHOE_ARM_SHA: ${{ steps.release_info.outputs.tahoe_arm_sha }}
         run: |
           FORMULA_PATH="Formula/asm56k.rb"
           BOTTLE_BLOCK=$(cat << EOF
@@ -91,12 +92,6 @@ jobs:
           mv "${FORMULA_PATH}.tmp" "$FORMULA_PATH"
           awk -v bb="$BOTTLE_BLOCK" '/^  version / {print; print bb; next} {print}' "$FORMULA_PATH" > "${FORMULA_PATH}.tmp"
           mv "${FORMULA_PATH}.tmp" "$FORMULA_PATH"
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          TAG: ${{ steps.release_info.outputs.tag }}
-          ARM64_SEQUOIA_SHA: ${{ steps.release_info.outputs.arm64_sequoia_sha }}
-          INTEL_SEQUOIA_SHA: ${{ steps.release_info.outputs.intel_sequoia_sha }}
-          TAHOE_ARM_SHA: ${{ steps.release_info.outputs.tahoe_arm_sha }}
 
       - name: Verify formula was updated correctly
         run: |
