@@ -1,0 +1,61 @@
+name: Build and Publish Homebrew Bottles for asm56
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - Formula/**
+
+jobs:
+  build-bottles:
+    strategy:
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x86_64
+          - os: macos-26
+            arch: arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Tap this repo
+        run: brew tap ${{ github.repository }}
+
+      - name: Install dependencies
+        run: brew install --only-dependencies asm56k
+
+      - name: Build bottle
+        run: |
+          brew install --build-bottle asm56k
+          brew bottle --no-rebuild asm56k --json
+
+      - name: Rename bottles for upload
+        run: |
+          for json_file in *.json; do
+            local_filename=$(jq -r '.[] | .bottle.tags | to_entries | .[0].value.local_filename' "$json_file")
+            filename=$(jq -r '.[] | .bottle.tags | to_entries | .[0].value.filename' "$json_file")
+            if [[ -f "$local_filename" && "$local_filename" != "$filename" ]]; then
+              echo "Renaming $local_filename to $filename"
+              mv "$local_filename" "$filename"
+            fi
+          done
+
+      - name: Upload bottle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bottles-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            *.bottle.tar.gz
+            *.bottle.json
+          retention-days: 400
