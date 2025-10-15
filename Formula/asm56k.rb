@@ -5,6 +5,13 @@ class Asm56k < Formula
   sha256 "84894d6ff84d93546fabe8ba604ee8857ce86a6229fc6947f921529394cc80dc"
   head "https://github.com/kareandersen/asm56k", branch: "main", using: :git
 
+  bottle do
+    root_url "https://github.com/kareandersen/homebrew-asm56k/releases/download/..."
+    sha256 cellar: :any_skip_relocation, arm64_sequoia: "..."
+    sha256 cellar: :any_skip_relocation, sequoia:       "..."
+    sha256 cellar: :any_skip_relocation, arm64_tahoe:   "..."
+  end
+
   def install
     system "make", "CC=clang", "CFLAGS=--std=c89"
     bin.install "./build/asm56k"

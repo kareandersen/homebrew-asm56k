@@ -33,15 +33,15 @@ jobs:
       - name: Generate release tag and extract bottle info
         id: release_info
         run: |
+          REPO="${{ github.repository }}"
           FORMULA="asm56k"
-          REPO="kareandersen/homebrew-asm56k"
-          VERSION=$(find bottles/ -name "*.json" | head -1 | xargs jq -r ".\"$REPO/$FORMULA\".formula.pkg_version")
+          VERSION=$(find bottles/ -name "*.bottle.json" | head -1 | xargs jq -r ".\"$REPO/$FORMULA\".formula.pkg_version")
           TAG="bottles-${VERSION}-$(date +%Y%m%d-%H%M%S)"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          ARM64_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_sequoia.sha256" bottles/bottles-macos-15-arm64/*.json)
-          INTEL_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.sequoia.sha256" bottles/bottles-macos-15-x86_64/*.json)
-          TAHOE_ARM_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_tahoe.sha256" bottles/bottles-macos-26-arm64/*.json)
+          ARM64_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_sequoia.sha256" bottles/bottles-macos-15-arm64/*.bottle.json)
+          INTEL_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.sequoia.sha256" bottles/bottles-macos-15-x86_64/*.bottle.json)
+          TAHOE_ARM_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_tahoe.sha256" bottles/bottles-macos-26-arm64/*.bottle.json)
           echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
           echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
           echo "tahoe_arm_sha=$TAHOE_ARM_SHA" >> "$GITHUB_OUTPUT"
@@ -55,7 +55,7 @@ jobs:
             Pre-built bottles for asm56k
             **Installation:**
             ```bash
-            brew tap kareandersen/homebrew-asm56k
+            brew tap ${{ github.repository }}
             brew install asm56k
             ```
           files: |
@@ -71,7 +71,7 @@ jobs:
         run: |
           FORMULA_PATH="Formula/asm56k.rb"
           sed -i \
-            -e 's|root_url "https://github.com/kareandersen/homebrew-asm56k/releases/download/[^"]*"|root_url "https://github.com/kareandersen/homebrew-asm56k/releases/download/${{ steps.release_info.outputs.tag }}"|' \
+            -e 's|root_url "https://github.com/${{ github.repository }}/releases/download/[^"]*"|root_url "https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag }}"|' \
             -e 's|sha256 cellar: :any_skip_relocation, arm64_sequoia: "[^"]*"|sha256 cellar: :any_skip_relocation, arm64_sequoia: "${{ steps.release_info.outputs.arm64_sequoia_sha }}"|' \
             -e 's|sha256 cellar: :any_skip_relocation, sequoia:       "[^"]*"|sha256 cellar: :any_skip_relocation, sequoia:       "${{ steps.release_info.outputs.intel_sequoia_sha }}"|' \
             -e 's|sha256 cellar: :any_skip_relocation, arm64_tahoe: "[^"]*"|sha256 cellar: :any_skip_relocation, arm64_tahoe: "${{ steps.release_info.outputs.tahoe_arm_sha }}"|' \
