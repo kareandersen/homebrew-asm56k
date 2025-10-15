@@ -2,6 +2,7 @@ class Asm56k < Formula
   desc "Assembler for DSP56001 with partial DSP56301 support"
   homepage "https://bitbucket.org/sqward/asm56k"
   url "https://github.com/kareandersen/asm56k/archive/refs/tags/v0.1.0.tar.gz"
+  sha256 "84894d6ff84d93546fabe8ba604ee8857ce86a6229fc6947f921529394cc80dc"
   head "https://github.com/kareandersen/asm56k", branch: "main", using: :git
 
   def install
