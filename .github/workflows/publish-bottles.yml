@@ -79,8 +79,8 @@ jobs:
           files: |
             bottles/bottles-macos-15-arm64/*.bottle.tar.gz
             bottles/bottles-macos-15-arm64/*.bottle.json
-            bottles/bottles-macos-15-x86_64/*.bottle.tar.gz
-            bottles/bottles-macos-15-x86_64/*.bottle.json
+            bottles/bottles-macos-15-intel-x86_64/*.bottle.tar.gz
+            bottles/bottles-macos-15-intel-x86_64/*.bottle.json
             bottles/bottles-macos-26-arm64/*.bottle.tar.gz
             bottles/bottles-macos-26-arm64/*.bottle.json
           draft: false
