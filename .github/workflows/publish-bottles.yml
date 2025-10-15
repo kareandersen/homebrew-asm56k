@@ -38,7 +38,8 @@ jobs:
         run: |
           REPO="${{ github.repository }}"
           FORMULA="asm56k"
-          VERSION=$(find bottles/ -name "*.bottle.json" | head -1 | xargs jq -r ".\"$REPO/$FORMULA\".formula.pkg_version")
+          # Try all bottle JSONs for pkg_version
+          VERSION=$(find bottles/ -name "*.bottle.json" | head -1 | xargs jq -r "try .\"$REPO/$FORMULA\".formula.pkg_version // empty")
           TAG="bottles-${VERSION}-$(date +%Y%m%d-%H%M%S)"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -49,15 +50,15 @@ jobs:
 
           # ARM64 Sequoia bottle sha
           if compgen -G "bottles/bottles-macos-15-arm64/*.bottle.json" > /dev/null; then
-            ARM64_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_sequoia.sha256" bottles/bottles-macos-15-arm64/*.bottle.json)
+            ARM64_SEQUOIA_SHA=$(jq -r "try .\"$REPO/$FORMULA\".bottle.tags.arm64_sequoia.sha256 // empty" bottles/bottles-macos-15-arm64/*.bottle.json)
           fi
           # Intel Sequoia bottle sha
-          if compgen -G "bottles/bottles-macos-15-x86_64/*.bottle.json" > /dev/null; then
-            INTEL_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.sequoia.sha256" bottles/bottles-macos-15-x86_64/*.bottle.json)
+          if compgen -G "bottles/bottles-macos-15-intel-x86_64/*.bottle.json" > /dev/null; then
+            INTEL_SEQUOIA_SHA=$(jq -r "try .\"$REPO/$FORMULA\".bottle.tags.sequoia.sha256 // empty" bottles/bottles-macos-15-intel-x86_64/*.bottle.json)
           fi
           # ARM64 Tahoe bottle sha
           if compgen -G "bottles/bottles-macos-26-arm64/*.bottle.json" > /dev/null; then
-            TAHOE_ARM_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_tahoe.sha256" bottles/bottles-macos-26-arm64/*.bottle.json)
+            TAHOE_ARM_SHA=$(jq -r "try .\"$REPO/$FORMULA\".bottle.tags.arm64_tahoe.sha256 // empty" bottles/bottles-macos-26-arm64/*.bottle.json)
           fi
 
           echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
