@@ -30,7 +30,7 @@ jobs:
           name: bottles-.*
           path: bottles/
 
-      - name: List downloaded bottle files (DEBUG)
+      - name: List downloaded bottle files (debug)
         run: find bottles/
 
       - name: Generate release tag and extract bottle info
@@ -42,9 +42,24 @@ jobs:
           TAG="bottles-${VERSION}-$(date +%Y%m%d-%H%M%S)"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          ARM64_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_sequoia.sha256" bottles/bottles-macos-15-arm64/*.bottle.json)
-          INTEL_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.sequoia.sha256" bottles/bottles-macos-15-x86_64/*.bottle.json)
-          TAHOE_ARM_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_tahoe.sha256" bottles/bottles-macos-26-arm64/*.bottle.json)
+
+          ARM64_SEQUOIA_SHA=""
+          INTEL_SEQUOIA_SHA=""
+          TAHOE_ARM_SHA=""
+
+          # ARM64 Sequoia bottle sha
+          if compgen -G "bottles/bottles-macos-15-arm64/*.bottle.json" > /dev/null; then
+            ARM64_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_sequoia.sha256" bottles/bottles-macos-15-arm64/*.bottle.json)
+          fi
+          # Intel Sequoia bottle sha
+          if compgen -G "bottles/bottles-macos-15-x86_64/*.bottle.json" > /dev/null; then
+            INTEL_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.sequoia.sha256" bottles/bottles-macos-15-x86_64/*.bottle.json)
+          fi
+          # ARM64 Tahoe bottle sha
+          if compgen -G "bottles/bottles-macos-26-arm64/*.bottle.json" > /dev/null; then
+            TAHOE_ARM_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_tahoe.sha256" bottles/bottles-macos-26-arm64/*.bottle.json)
+          fi
+
           echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
           echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
           echo "tahoe_arm_sha=$TAHOE_ARM_SHA" >> "$GITHUB_OUTPUT"
@@ -90,27 +105,26 @@ EOF
           # Insert the new bottle block after the version line
           awk -v bb="$BOTTLE_BLOCK" '/^  version / {print; print bb; next} {print}' "$FORMULA_PATH" > "${FORMULA_PATH}.tmp"
           mv "${FORMULA_PATH}.tmp" "$FORMULA_PATH"
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG: ${{ steps.release_info.outputs.tag }}
+          ARM64_SEQUOIA_SHA: ${{ steps.release_info.outputs.arm64_sequoia_sha }}
+          INTEL_SEQUOIA_SHA: ${{ steps.release_info.outputs.intel_sequoia_sha }}
+          TAHOE_ARM_SHA: ${{ steps.release_info.outputs.tahoe_arm_sha }}
 
       - name: Verify formula was updated correctly
         run: |
           FORMULA_PATH="Formula/asm56k.rb"
-          if ! grep -q "releases/download/${{ steps.release_info.outputs.tag }}" "$FORMULA_PATH"; then
-            echo "ERROR: Formula root_url was not updated correctly"
-            exit 1
-          fi
-          if ! grep -q "${{ steps.release_info.outputs.arm64_sequoia_sha }}" "$FORMULA_PATH"; then
-            echo "ERROR: ARM64 Sequoia SHA256 was not updated correctly"
-            exit 1
-          fi
-          if ! grep -q "${{ steps.release_info.outputs.intel_sequoia_sha }}" "$FORMULA_PATH"; then
-            echo "ERROR: Intel Sequoia SHA256 was not updated correctly"
-            exit 1
-          fi
-          if ! grep -q "${{ steps.release_info.outputs.tahoe_arm_sha }}" "$FORMULA_PATH"; then
-            echo "ERROR: ARM64 Tahoe SHA256 was not updated correctly"
-            exit 1
-          fi
+          grep -q "releases/download/${TAG}" "$FORMULA_PATH" || { echo "ERROR: Formula root_url was not updated correctly"; exit 1; }
+          grep -q "${ARM64_SEQUOIA_SHA}" "$FORMULA_PATH" || { echo "ERROR: ARM64 Sequoia SHA256 was not updated correctly"; exit 1; }
+          grep -q "${INTEL_SEQUOIA_SHA}" "$FORMULA_PATH" || { echo "ERROR: Intel Sequoia SHA256 was not updated correctly"; exit 1; }
+          grep -q "${TAHOE_ARM_SHA}" "$FORMULA_PATH" || { echo "ERROR: ARM64 Tahoe SHA256 was not updated correctly"; exit 1; }
           echo "Formula updated successfully"
+        env:
+          TAG: ${{ steps.release_info.outputs.tag }}
+          ARM64_SEQUOIA_SHA: ${{ steps.release_info.outputs.arm64_sequoia_sha }}
+          INTEL_SEQUOIA_SHA: ${{ steps.release_info.outputs.intel_sequoia_sha }}
+          TAHOE_ARM_SHA: ${{ steps.release_info.outputs.tahoe_arm_sha }}
 
       - name: Commit updated formula
         run: |
