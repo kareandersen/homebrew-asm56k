@@ -1,0 +1,107 @@
+name: Publish Bottles for asm56k
+
+on:
+  workflow_run:
+    workflows: ["Build Bottles"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+
+jobs:
+  create-release:
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download bottle artifacts
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: build-bottles.yml
+          name_is_regexp: true
+          name: bottles-.*
+          path: bottles/
+
+      - name: Generate release tag and extract bottle info
+        id: release_info
+        run: |
+          FORMULA="asm56k"
+          REPO="kareandersen/homebrew-asm56k"
+          VERSION=$(find bottles/ -name "*.json" | head -1 | xargs jq -r ".\"$REPO/$FORMULA\".formula.pkg_version")
+          TAG="bottles-${VERSION}-$(date +%Y%m%d-%H%M%S)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          ARM64_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_sequoia.sha256" bottles/bottles-macos-15-arm64/*.json)
+          INTEL_SEQUOIA_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.sequoia.sha256" bottles/bottles-macos-15-x86_64/*.json)
+          TAHOE_ARM_SHA=$(jq -r ".\"$REPO/$FORMULA\".bottle.tags.arm64_tahoe.sha256" bottles/bottles-macos-26-arm64/*.json)
+          echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
+          echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
+          echo "tahoe_arm_sha=$TAHOE_ARM_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: "Bottles ${{ steps.release_info.outputs.tag }}"
+          body: |
+            Pre-built bottles for asm56k
+            **Installation:**
+            ```bash
+            brew tap kareandersen/homebrew-asm56k
+            brew install asm56k
+            ```
+          files: |
+            bottles/bottles-macos-15-arm64/*.bottle.tar.gz
+            bottles/bottles-macos-15-arm64/*.bottle.json
+            bottles/bottles-macos-15-x86_64/*.bottle.tar.gz
+            bottles/bottles-macos-15-x86_64/*.bottle.json
+            bottles/bottles-macos-26-arm64/*.bottle.tar.gz
+            bottles/bottles-macos-26-arm64/*.bottle.json
+          draft: false
+
+      - name: Update formula bottle block
+        run: |
+          FORMULA_PATH="Formula/asm56k.rb"
+          sed -i \
+            -e 's|root_url "https://github.com/kareandersen/homebrew-asm56k/releases/download/[^"]*"|root_url "https://github.com/kareandersen/homebrew-asm56k/releases/download/${{ steps.release_info.outputs.tag }}"|' \
+            -e 's|sha256 cellar: :any_skip_relocation, arm64_sequoia: "[^"]*"|sha256 cellar: :any_skip_relocation, arm64_sequoia: "${{ steps.release_info.outputs.arm64_sequoia_sha }}"|' \
+            -e 's|sha256 cellar: :any_skip_relocation, sequoia:       "[^"]*"|sha256 cellar: :any_skip_relocation, sequoia:       "${{ steps.release_info.outputs.intel_sequoia_sha }}"|' \
+            -e 's|sha256 cellar: :any_skip_relocation, arm64_tahoe: "[^"]*"|sha256 cellar: :any_skip_relocation, arm64_tahoe: "${{ steps.release_info.outputs.tahoe_arm_sha }}"|' \
+            "$FORMULA_PATH"
+
+      - name: Verify formula was updated correctly
+        run: |
+          FORMULA_PATH="Formula/asm56k.rb"
+          if ! grep -q "releases/download/${{ steps.release_info.outputs.tag }}" "$FORMULA_PATH"; then
+            echo "ERROR: Formula root_url was not updated correctly"
+            exit 1
+          fi
+          if ! grep -q "${{ steps.release_info.outputs.arm64_sequoia_sha }}" "$FORMULA_PATH"; then
+            echo "ERROR: ARM64 Sequoia SHA256 was not updated correctly"
+            exit 1
+          fi
+          if ! grep -q "${{ steps.release_info.outputs.intel_sequoia_sha }}" "$FORMULA_PATH"; then
+            echo "ERROR: Intel Sequoia SHA256 was not updated correctly"
+            exit 1
+          fi
+          if ! grep -q "${{ steps.release_info.outputs.tahoe_arm_sha }}" "$FORMULA_PATH"; then
+            echo "ERROR: ARM64 Tahoe SHA256 was not updated correctly"
+            exit 1
+          fi
+          echo "Formula updated successfully"
+
+      - name: Commit updated formula
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/asm56k.rb
+          git commit -m "update bottle hashes for ${{ steps.release_info.outputs.tag }}"
+          git push
