@@ -30,6 +30,9 @@ jobs:
           name: bottles-.*
           path: bottles/
 
+      - name: List downloaded bottle files (DEBUG)
+        run: find bottles/
+
       - name: Generate release tag and extract bottle info
         id: release_info
         run: |
