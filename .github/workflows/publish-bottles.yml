@@ -74,12 +74,12 @@ jobs:
         run: |
           FORMULA_PATH="Formula/asm56k.rb"
           BOTTLE_BLOCK=$(cat <<EOF
-  bottle do
-    root_url "https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag }}"
-    sha256 cellar: :any_skip_relocation, arm64_sequoia: "${{ steps.release_info.outputs.arm64_sequoia_sha }}"
-    sha256 cellar: :any_skip_relocation, sequoia:       "${{ steps.release_info.outputs.intel_sequoia_sha }}"
-    sha256 cellar: :any_skip_relocation, arm64_tahoe:   "${{ steps.release_info.outputs.tahoe_arm_sha }}"
-  end
+bottle do
+  root_url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+  sha256 cellar: :any_skip_relocation, arm64_sequoia: "${ARM64_SEQUOIA_SHA}"
+  sha256 cellar: :any_skip_relocation, sequoia:       "${INTEL_SEQUOIA_SHA}"
+  sha256 cellar: :any_skip_relocation, arm64_tahoe:   "${TAHOE_ARM_SHA}"
+end
 EOF
           )
 
