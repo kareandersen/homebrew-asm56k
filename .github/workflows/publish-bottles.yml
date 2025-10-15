@@ -30,9 +30,6 @@ jobs:
           name: bottles-.*
           path: bottles/
 
-      - name: List downloaded bottle files (debug)
-        run: find bottles/
-
       - name: Extract version and SHA256 from bottles
         id: release_info
         run: |
@@ -49,7 +46,7 @@ jobs:
           echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA" >> "$GITHUB_OUTPUT"
           echo "tahoe_arm_sha=$TAHOE_ARM_SHA" >> "$GITHUB_OUTPUT"
 
-        - name: Create GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_info.outputs.tag }}
