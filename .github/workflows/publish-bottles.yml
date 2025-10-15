@@ -34,6 +34,7 @@ jobs:
         run: find bottles/
 
       - name: Extract version and SHA256 from bottles
+        id: release_info
         run: |
           # Build the JSON key from the repository name
           JSON_KEY="${GITHUB_REPOSITORY/homebrew-/}/asm56k"
@@ -46,6 +47,8 @@ jobs:
           INTEL_SEQUOIA_SHA=$(jq -r "try .\"$JSON_KEY\".bottle.tags.sequoia.sha256 // empty" bottles/bottles-macos-15-intel-x86_64/*.bottle.json)
           TAHOE_ARM_SHA=$(jq -r "try .\"$JSON_KEY\".bottle.tags.arm64_tahoe.sha256 // empty" bottles/bottles-macos-26-arm64/*.bottle.json)
 
+          TAG="bottles-${VERSION}-$(date +%Y%m%d-%H%M%S)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION"
           echo "arm64_sequoia_sha=$ARM64_SEQUOIA_SHA"
           echo "intel_sequoia_sha=$INTEL_SEQUOIA_SHA"
