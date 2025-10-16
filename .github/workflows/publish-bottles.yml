@@ -75,20 +75,20 @@ jobs:
           INTEL_SEQUOIA_SHA: ${{ steps.release_info.outputs.intel_sequoia_sha }}
           TAHOE_ARM_SHA: ${{ steps.release_info.outputs.tahoe_arm_sha }}
         run: |
+          set -euo pipefail
           FORMULA_PATH="Formula/asm56k.rb"
-          BOTTLE_BLOCK=$(cat << EOF
-          bottle do
-            root_url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
-            sha256 cellar: :any_skip_relocation, arm64_sequoia: "${ARM64_SEQUOIA_SHA}"
-            sha256 cellar: :any_skip_relocation, sequoia:       "${INTEL_SEQUOIA_SHA}"
-            sha256 cellar: :any_skip_relocation, arm64_tahoe:   "${TAHOE_ARM_SHA}"
-          end
-          EOF
-          )
-          awk '/^  bottle do/,/^  end$/ {next} {print}' "$FORMULA_PATH" > "${FORMULA_PATH}.tmp"
+
+          awk \
+            -v repo="$GITHUB_REPOSITORY" \
+            -v tag="$TAG" \
+            -v a="$ARM64_SEQUOIA_SHA" \
+            -v i="$INTEL_SEQUOIA_SHA" \
+            -v t="$TAHOE_ARM_SHA" \
+            -f .github/scripts/update_bottle_block.awk \
+            "$FORMULA_PATH" > "${FORMULA_PATH}.tmp"
+
           mv "${FORMULA_PATH}.tmp" "$FORMULA_PATH"
-          awk -v bb="$BOTTLE_BLOCK" '/^  version / {print; print bb; next} {print}' "$FORMULA_PATH" > "${FORMULA_PATH}.tmp"
-          mv "${FORMULA_PATH}.tmp" "$FORMULA_PATH"
+
 
       - name: Verify formula was updated correctly
         run: |
